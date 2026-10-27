@@ -1,40 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>上野毛 夏宵祭 2026</title>
-  <link href="style.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#10102b">
+  <title>Overlap</title>
+  <style>
+    html, body { width:100%; height:100%; margin:0; overflow:hidden; background:#10102b; }
+    body { position:fixed; inset:0; touch-action:none; -webkit-user-select:none; user-select:none; }
+    #color { position:absolute; inset:0; background: hsl(240 85% 48%); transition: background-color 100ms linear; }
+    #veil { position:absolute; inset:0; pointer-events:none; background:radial-gradient(circle at 50% 45%, rgba(255,255,255,.16), transparent 68%); mix-blend-mode:screen; }
+    #start { position:absolute; inset:0; display:grid; place-items:center; background:#10102b; color:white; font: 14px/1.8 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing:.12em; text-align:center; padding:24px; border:0; width:100%; cursor:pointer; }
+    #start[hidden] { display:none; }
+  </style>
 </head>
-
 <body>
-
-  <header>
-  </header>
-
-  <div class="page">
-    <div class="title-block">
-      <img src="title.svg" alt="上野毛 夏宵祭 2026">
-    </div>
-    <div class="emblem-block">
-      <div class="emblem-inner">
-        <img class="vector" id="vector" src="vector.svg" alt="">
-        <img class="wa" src="wa.svg" alt="">
-      </div>
-    </div>
-    <div class="date-block">
-      <img src="date.svg" alt="開催日 8月1日(土)〜3日(月)">
-    </div>
-    <div class="coming-block">
-      <img src="coming.svg" alt="近日公開 coming soon">
-    </div>
-  </div>
-
-  <footer>
-  </footer>
-
-  <script src="main.js"></script>
+  <div id="color"></div><div id="veil"></div>
+  <button id="start" type="button">画面をタップして開始</button>
+  <script>
+    const color = document.getElementById('color');
+    const start = document.getElementById('start');
+    const MAX_ANGLE = 20; // ±20度で色域の端まで変化
+    let neutral = null;
+    let target = 0;
+    let current = 0;
+    let lastBeta = null;
+    function clamp(x, lo, hi) { return Math.max(lo, Math.min(hi, x)); }
+    function updateTilt(event) {
+      // この試作は端末の前後方向の傾き(beta)を使う。
+      // 実機の回転軸に合わせて gamma に変更してもよい。
+      if (event.beta == null) return;
+      lastBeta = event.beta;
+      if (neutral === null) neutral = event.beta;
+      let delta = event.beta - neutral;
+      // betaの境界(±180度)をまたぐ場合の補正
+      delta = ((delta + 180) % 360 + 360) % 360 - 180;
+      target = clamp(delta / MAX_ANGLE, -1, 1);
+    }
+    function animate() {
+      current += (target - current) * 0.13;
+      const hue = 245 + current * 95; // 青紫 -> 青緑 / 赤紫
+      const light = 49 + current * 5;
+      color.style.backgroundColor = `hsl(${hue} 88% ${light}%)`;
+      requestAnimationFrame(animate);
+    }
+    animate();
+    async function begin() {
+      try {
+        if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+          const result = await DeviceOrientationEvent.requestPermission();
+          if (result !== 'granted') { start.textContent = '傾きセンサーの許可が必要です。タップして再試行'; return; }
+        }
+        window.addEventListener('deviceorientation', updateTilt, true);
+        start.hidden = true;
+      } catch (e) {
+        start.textContent = 'センサーを開始できません。HTTPSで開いて再試行してください';
+      }
+    }
+    start.addEventListener('click', begin);
+    // 画面を長押しすると、そのときの傾きを中心位置として再設定
+    let pressTimer;
+    document.body.addEventListener('touchstart', () => { pressTimer = setTimeout(() => { neutral = lastBeta; }, 1200); }, {passive:true});
+    document.body.addEventListener('touchend', () => clearTimeout(pressTimer), {passive:true});
+    document.body.addEventListener('touchcancel', () => clearTimeout(pressTimer), {passive:true});
+  </script>
 </body>
-
 </html>
